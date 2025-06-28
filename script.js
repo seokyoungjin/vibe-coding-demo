@@ -160,6 +160,18 @@ class TodoApp {
   }
 
   deleteTodo(id) {
+    // 체크된 할일만 삭제 가능
+    const todo = this.todos.find((t) => t.id === id);
+    if (!todo) {
+      this.showNotification("할 일을 찾을 수 없습니다.", "error");
+      return;
+    }
+
+    if (!todo.completed) {
+      this.showNotification("완료된 할 일만 삭제할 수 있습니다.", "warning");
+      return;
+    }
+
     this.todoToDelete = id;
     this.showDeleteModal();
   }
