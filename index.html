@@ -17,17 +17,13 @@
   <body>
     <div class="container">
       <header class="header">
-        <h1>TODO LIST</h1>
+        <h1>할일 관리</h1>
       </header>
 
       <div class="todo-form">
         <div class="input-container">
-          <input
-            type="text"
-            id="todoInput"
-            placeholder="이곳에 해야할 일을 적어주세요"
-          />
-          <button id="addTodo" class="add-btn">+</button>
+          <input type="text" id="todoInput" placeholder="할일을 입력하세요" />
+          <button id="addTodo" class="add-btn">추가</button>
         </div>
       </div>
 
@@ -35,10 +31,6 @@
         <div class="empty-state">
           <p>할 일을 추가해보세요!</p>
         </div>
-      </div>
-
-      <div class="clear-all-container">
-        <button id="clearAll" class="clear-all-btn">Clear All</button>
       </div>
     </div>
 
@@ -54,18 +46,7 @@
       </div>
     </div>
 
-    <!-- 전체 삭제 확인 모달 -->
-    <div id="clearAllModal" class="modal">
-      <div class="modal-content">
-        <h3>전체 할 일 삭제</h3>
-        <p>모든 할 일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
-        <div class="modal-actions">
-          <button id="confirmClearAll" class="btn btn-danger">전체 삭제</button>
-          <button id="cancelClearAll" class="btn btn-secondary">취소</button>
-        </div>
-      </div>
-    </div>
-
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>
+image.png

@@ -6,21 +6,18 @@
 
 body {
   font-family: "Noto Sans KR", sans-serif;
-  background: #f5f5f5;
+  background: #f8f9fa;
   min-height: 100vh;
   color: #333;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
   padding: 40px 20px;
 }
 
 .container {
-  max-width: 400px;
-  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
   background: white;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
 
@@ -29,160 +26,162 @@ body {
   text-align: center;
   padding: 30px 20px 20px;
   background: white;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .header h1 {
-  color: #4a5568;
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: 2px;
+  color: #343a40;
+  font-size: 1.8rem;
+  font-weight: 600;
 }
 
 /* Todo Form */
 .todo-form {
-  padding: 0 20px 20px;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .input-container {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 
 #todoInput {
   flex: 1;
-  padding: 15px;
-  border: 2px solid #e2e8f0;
+  padding: 12px 16px;
+  border: 1px solid #dee2e6;
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.2s ease;
+  background: #f8f9fa;
 }
 
 #todoInput:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #6c9bd1;
+  background: white;
 }
 
 .add-btn {
-  width: 50px;
-  height: 50px;
-  background: #667eea;
+  padding: 12px 20px;
+  background: #6c9bd1;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .add-btn:hover {
-  background: #5a67d8;
-  transform: translateY(-2px);
+  background: #5a8bc4;
 }
 
 /* Todo List */
 .todo-list {
-  padding: 0 20px;
-  max-height: 400px;
-  overflow-y: auto;
+  padding: 0;
+  min-height: 200px;
 }
 
 .todo-item {
   display: flex;
   align-items: center;
-  padding: 15px;
-  margin-bottom: 10px;
-  background: white;
-  border: 2px solid #667eea;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  animation: fadeIn 0.3s ease;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f3f4;
+  transition: background-color 0.2s ease;
+  position: relative;
 }
 
 .todo-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+  background: #f8f9fa;
+}
+
+.todo-item:last-child {
+  border-bottom: none;
 }
 
 .todo-item.completed {
-  background: #f7fafc;
-  border-color: #e2e8f0;
+  background: #f8f9fa;
+  opacity: 0.7;
 }
 
 .todo-item.completed .todo-text {
   text-decoration: line-through;
-  color: #a0aec0;
+  color: #6c757d;
+}
+
+.todo-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  background: #dee2e6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #6c757d;
+  flex-shrink: 0;
 }
 
 .todo-checkbox {
-  width: 20px;
-  height: 20px;
-  margin-right: 15px;
+  width: 18px;
+  height: 18px;
+  margin-right: 12px;
   cursor: pointer;
-  accent-color: #667eea;
+  flex-shrink: 0;
+  accent-color: #28a745;
+}
+
+.checkmark {
+  display: none;
 }
 
 .todo-text {
   flex: 1;
   font-size: 14px;
   line-height: 1.5;
-  color: #2d3748;
+  color: #343a40;
+  margin-left: 0;
 }
 
-.delete-btn {
-  background: #f56565;
-  color: white;
+.todo-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
   border: none;
-  width: 30px;
-  height: 30px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
+  font-size: 14px;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.delete-btn {
+  background: #f8d7da;
+  color: #721c24;
+}
+
 .delete-btn:hover {
-  background: #e53e3e;
-  transform: scale(1.1);
-}
-
-/* Clear All Button */
-.clear-all-container {
-  padding: 20px;
-  text-align: center;
-  border-top: 1px solid #e2e8f0;
-}
-
-.clear-all-btn {
-  background: #f56565;
-  color: white;
-  border: none;
-  padding: 12px 30px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.clear-all-btn:hover {
-  background: #e53e3e;
-  transform: translateY(-2px);
+  background: #f5c6cb;
 }
 
 /* Empty State */
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
-  color: #a0aec0;
+  padding: 60px 20px;
+  color: #6c757d;
 }
 
 .empty-state p {
@@ -206,7 +205,7 @@ body {
   background: white;
   margin: 15% auto;
   padding: 30px;
-  border-radius: 15px;
+  border-radius: 12px;
   width: 90%;
   max-width: 400px;
   text-align: center;
@@ -215,13 +214,14 @@ body {
 
 .modal-content h3 {
   margin-bottom: 15px;
-  color: #2d3748;
+  color: #343a40;
   font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .modal-content p {
   margin-bottom: 25px;
-  color: #4a5568;
+  color: #6c757d;
   line-height: 1.6;
 }
 
@@ -238,32 +238,32 @@ body {
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .btn-danger {
-  background: #f56565;
+  background: #dc3545;
   color: white;
 }
 
 .btn-danger:hover {
-  background: #e53e3e;
+  background: #c82333;
 }
 
 .btn-secondary {
-  background: #718096;
+  background: #6c757d;
   color: white;
 }
 
 .btn-secondary:hover {
-  background: #4a5568;
+  background: #5a6268;
 }
 
 /* Animation */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -271,15 +271,20 @@ body {
   }
 }
 
+.todo-item {
+  animation: fadeIn 0.3s ease;
+}
+
 /* Responsive Design */
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .container {
-    margin: 20px;
-    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    min-height: 100vh;
   }
 
   .header h1 {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
   .modal-content {
@@ -297,7 +302,7 @@ body {
   position: fixed;
   top: 20px;
   right: 20px;
-  background: #4299e1;
+  background: #6c9bd1;
   color: white;
   padding: 15px 20px;
   border-radius: 8px;

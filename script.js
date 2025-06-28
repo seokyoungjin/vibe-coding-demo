@@ -1,20 +1,44 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  set,
+  onValue,
+  remove,
+  update,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCwEz9dolQp-xKnAXJW-URioX-PhRXxjws",
+  authDomain: "vibe-coding-backend-demo.firebaseapp.com",
+  projectId: "vibe-coding-backend-demo",
+  storageBucket: "vibe-coding-backend-demo.firebasestorage.app",
+  messagingSenderId: "1210264421",
+  appId: "1:1210264421:web:1262a836ce7697cdf3cf8c",
+  databaseURL:
+    "https://vibe-coding-backend-demo-default-rtdb.asia-southeast1.firebasedatabase.app/",
+};
+
+// Initialize Firebase
+const firebaseapp = initializeApp(firebaseConfig);
+const database = getDatabase(firebaseapp);
 class TodoApp {
   constructor() {
-    this.todos = JSON.parse(localStorage.getItem("todos")) || [];
+    this.todos = [];
     this.todoToDelete = null;
+    this.todosRef = ref(database, "todos");
 
     this.initializeElements();
     this.bindEvents();
-    this.renderTodos();
+    this.loadTodosFromFirebase();
   }
 
   initializeElements() {
     // Form elements
     this.todoInput = document.getElementById("todoInput");
     this.addBtn = document.getElementById("addTodo");
-
-    // Control elements
-    this.clearAllBtn = document.getElementById("clearAll");
 
     // Display elements
     this.todoList = document.getElementById("todoList");
@@ -23,9 +47,6 @@ class TodoApp {
     this.deleteModal = document.getElementById("deleteModal");
     this.confirmDeleteBtn = document.getElementById("confirmDelete");
     this.cancelDeleteBtn = document.getElementById("cancelDelete");
-    this.clearAllModal = document.getElementById("clearAllModal");
-    this.confirmClearAllBtn = document.getElementById("confirmClearAll");
-    this.cancelClearAllBtn = document.getElementById("cancelClearAll");
   }
 
   bindEvents() {
@@ -37,26 +58,16 @@ class TodoApp {
       }
     });
 
-    // Control events
-    this.clearAllBtn.addEventListener("click", () => this.showClearAllModal());
-
     // Modal events
     this.confirmDeleteBtn.addEventListener("click", () => this.confirmDelete());
     this.cancelDeleteBtn.addEventListener("click", () =>
       this.hideDeleteModal()
-    );
-    this.confirmClearAllBtn.addEventListener("click", () =>
-      this.confirmClearAll()
-    );
-    this.cancelClearAllBtn.addEventListener("click", () =>
-      this.hideClearAllModal()
     );
 
     // Keyboard events
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         this.hideDeleteModal();
-        this.hideClearAllModal();
       }
     });
 
@@ -66,15 +77,9 @@ class TodoApp {
         this.hideDeleteModal();
       }
     });
-
-    this.clearAllModal.addEventListener("click", (e) => {
-      if (e.target === this.clearAllModal) {
-        this.hideClearAllModal();
-      }
-    });
   }
 
-  addTodo() {
+  async addTodo() {
     const text = this.todoInput.value.trim();
 
     if (!text) {
@@ -83,26 +88,35 @@ class TodoApp {
     }
 
     const todo = {
-      id: Date.now(),
       text: text,
       completed: false,
       createdAt: new Date().toISOString(),
     };
 
-    this.todos.unshift(todo);
-    this.saveTodos();
-    this.todoInput.value = "";
-    this.renderTodos();
-    this.showNotification("할 일이 추가되었습니다.", "success");
+    try {
+      // Firebase에 새로운 할 일 추가
+      await push(this.todosRef, todo);
+      this.todoInput.value = "";
+      this.showNotification("할 일이 추가되었습니다.", "success");
+    } catch (error) {
+      console.error("할 일 추가 중 오류:", error);
+      this.showNotification("할 일 추가에 실패했습니다.", "error");
+    }
   }
 
-  toggleTodo(id) {
-    const todoIndex = this.todos.findIndex((t) => t.id === id);
-    if (todoIndex === -1) return;
+  async toggleTodo(id) {
+    try {
+      const todoRef = ref(database, `todos/${id}`);
+      const todo = this.todos.find((t) => t.id === id);
+      if (!todo) return;
 
-    this.todos[todoIndex].completed = !this.todos[todoIndex].completed;
-    this.saveTodos();
-    this.renderTodos();
+      await update(todoRef, {
+        completed: !todo.completed,
+      });
+    } catch (error) {
+      console.error("할 일 상태 변경 중 오류:", error);
+      this.showNotification("상태 변경에 실패했습니다.", "error");
+    }
   }
 
   deleteTodo(id) {
@@ -110,24 +124,47 @@ class TodoApp {
     this.showDeleteModal();
   }
 
-  confirmDelete() {
+  async confirmDelete() {
     if (!this.todoToDelete) return;
 
-    this.todos = this.todos.filter((t) => t.id !== this.todoToDelete);
-    this.saveTodos();
-    this.renderTodos();
-    this.hideDeleteModal();
-    this.showNotification("할 일이 삭제되었습니다.", "success");
-
-    this.todoToDelete = null;
+    try {
+      const todoRef = ref(database, `todos/${this.todoToDelete}`);
+      await remove(todoRef);
+      this.hideDeleteModal();
+      this.showNotification("할 일이 삭제되었습니다.", "success");
+      this.todoToDelete = null;
+    } catch (error) {
+      console.error("할 일 삭제 중 오류:", error);
+      this.showNotification("할 일 삭제에 실패했습니다.", "error");
+    }
   }
 
-  confirmClearAll() {
-    this.todos = [];
-    this.saveTodos();
-    this.renderTodos();
-    this.hideClearAllModal();
-    this.showNotification("모든 할 일이 삭제되었습니다.", "success");
+  loadTodosFromFirebase() {
+    // Firebase에서 실시간으로 데이터 로드
+    onValue(
+      this.todosRef,
+      (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          // Firebase 데이터를 배열로 변환 (key를 id로 사용)
+          this.todos = Object.keys(data).map((key) => ({
+            id: key,
+            ...data[key],
+          }));
+          // 생성일 기준으로 최신순 정렬
+          this.todos.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
+        } else {
+          this.todos = [];
+        }
+        this.renderTodos();
+      },
+      (error) => {
+        console.error("데이터 로드 중 오류:", error);
+        this.showNotification("데이터 로드에 실패했습니다.", "error");
+      }
+    );
   }
 
   renderTodos() {
@@ -143,27 +180,56 @@ class TodoApp {
     this.todoList.innerHTML = this.todos
       .map((todo) => {
         return `
-          <div class="todo-item ${todo.completed ? "completed" : ""}">
+          <div class="todo-item ${
+            todo.completed ? "completed" : ""
+          }" data-id="${todo.id}">
             <input 
               type="checkbox" 
               class="todo-checkbox" 
               ${todo.completed ? "checked" : ""}
-              onchange="app.toggleTodo(${todo.id})"
+              data-id="${todo.id}"
             >
             <span class="todo-text">${todo.text}</span>
-            <button class="delete-btn" onclick="app.deleteTodo(${
-              todo.id
-            })" title="삭제">
-              <i class="fas fa-trash"></i>
-            </button>
+            <div class="todo-actions">
+              <button class="action-btn delete-btn" data-id="${
+                todo.id
+              }" title="삭제">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
           </div>
         `;
       })
       .join("");
+
+    // 이벤트 리스너 추가
+    this.addTodoEventListeners();
   }
 
-  saveTodos() {
-    localStorage.setItem("todos", JSON.stringify(this.todos));
+  addTodoEventListeners() {
+    // 체크박스 이벤트 리스너
+    const checkboxes = this.todoList.querySelectorAll(".todo-checkbox");
+    checkboxes.forEach((checkbox) => {
+      checkbox.addEventListener("change", (e) => {
+        const todoId = e.target.getAttribute("data-id");
+        if (todoId) {
+          this.toggleTodo(todoId);
+        }
+      });
+    });
+
+    // 삭제 버튼 이벤트 리스너
+    const deleteButtons = this.todoList.querySelectorAll(".delete-btn");
+    deleteButtons.forEach((button) => {
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const todoId = e.target.closest(".delete-btn").getAttribute("data-id");
+        if (todoId) {
+          this.deleteTodo(todoId);
+        }
+      });
+    });
   }
 
   showDeleteModal() {
@@ -173,18 +239,6 @@ class TodoApp {
   hideDeleteModal() {
     this.deleteModal.style.display = "none";
     this.todoToDelete = null;
-  }
-
-  showClearAllModal() {
-    if (this.todos.length === 0) {
-      this.showNotification("삭제할 할 일이 없습니다.", "info");
-      return;
-    }
-    this.clearAllModal.style.display = "block";
-  }
-
-  hideClearAllModal() {
-    this.clearAllModal.style.display = "none";
   }
 
   showNotification(message, type = "info") {
@@ -299,4 +353,6 @@ class TodoApp {
 let app;
 document.addEventListener("DOMContentLoaded", () => {
   app = new TodoApp();
+  // 전역 변수로 노출 (디버깅용)
+  window.app = app;
 });
