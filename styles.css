@@ -302,6 +302,19 @@ body {
   margin-top: 2px;
 }
 
+.todo-author {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #6c9bd1;
+  font-weight: 500;
+}
+
+.todo-author i {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
 .todo-date {
   display: flex;
   align-items: center;

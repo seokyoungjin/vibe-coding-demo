@@ -103,6 +103,11 @@ class TodoApp {
       return;
     }
 
+    if (!this.todosRef) {
+      this.showNotification("데이터베이스 연결이 없습니다.", "error");
+      return;
+    }
+
     const text = this.todoInput.value.trim();
 
     if (!text) {
@@ -130,7 +135,14 @@ class TodoApp {
       console.log("할 일 추가 완료:", todo);
     } catch (error) {
       console.error("할 일 추가 중 오류:", error);
-      this.showNotification("할 일 추가에 실패했습니다.", "error");
+      if (error.code === "PERMISSION_DENIED") {
+        this.showNotification(
+          "데이터 추가 권한이 없습니다. 다시 로그인해주세요.",
+          "error"
+        );
+      } else {
+        this.showNotification("할 일 추가에 실패했습니다.", "error");
+      }
     }
   }
 
@@ -196,41 +208,53 @@ class TodoApp {
   }
 
   loadTodosFromFirebase() {
-    if (!this.todosRef) {
-      console.log("todosRef가 없습니다.");
+    if (!this.todosRef || !this.currentUser) {
+      console.log("todosRef 또는 currentUser가 없습니다.");
       return;
     }
 
     console.log("Firebase 데이터 로드 시작:", this.todosRef.toString());
 
-    // Firebase에서 실시간으로 데이터 로드
-    onValue(
-      this.todosRef,
-      (snapshot) => {
-        console.log("Firebase 데이터 업데이트:", snapshot.val());
-        const data = snapshot.val();
-        if (data) {
-          // Firebase 데이터를 배열로 변환 (key를 id로 사용)
-          this.todos = Object.keys(data).map((key) => ({
-            id: key,
-            ...data[key],
-          }));
-          // 생성일 기준으로 최신순 정렬
-          this.todos.sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-          );
-          console.log("정렬된 할일 목록:", this.todos);
-        } else {
-          this.todos = [];
-          console.log("할일 목록이 비어있습니다.");
+    try {
+      // Firebase에서 실시간으로 데이터 로드
+      onValue(
+        this.todosRef,
+        (snapshot) => {
+          console.log("Firebase 데이터 업데이트:", snapshot.val());
+          const data = snapshot.val();
+          if (data) {
+            // Firebase 데이터를 배열로 변환 (key를 id로 사용)
+            this.todos = Object.keys(data).map((key) => ({
+              id: key,
+              ...data[key],
+            }));
+            // 생성일 기준으로 최신순 정렬
+            this.todos.sort(
+              (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+            );
+            console.log("정렬된 할일 목록:", this.todos);
+          } else {
+            this.todos = [];
+            console.log("할일 목록이 비어있습니다.");
+          }
+          this.renderTodos();
+        },
+        (error) => {
+          console.error("데이터 로드 중 오류:", error);
+          if (error.code === "PERMISSION_DENIED") {
+            this.showNotification(
+              "데이터 접근 권한이 없습니다. 다시 로그인해주세요.",
+              "error"
+            );
+          } else {
+            this.showNotification("데이터 로드에 실패했습니다.", "error");
+          }
         }
-        this.renderTodos();
-      },
-      (error) => {
-        console.error("데이터 로드 중 오류:", error);
-        this.showNotification("데이터 로드에 실패했습니다.", "error");
-      }
-    );
+      );
+    } catch (error) {
+      console.error("Firebase 연결 오류:", error);
+      this.showNotification("Firebase 연결에 실패했습니다.", "error");
+    }
   }
 
   renderTodos() {
@@ -264,6 +288,10 @@ class TodoApp {
           }
         );
 
+        const authorName = todo.author
+          ? todo.author.displayName || todo.author.email || "익명"
+          : "익명";
+
         return `
           <div class="todo-item ${
             todo.completed ? "completed" : ""
@@ -277,6 +305,10 @@ class TodoApp {
             <div class="todo-content">
               <span class="todo-text">${todo.text}</span>
               <div class="todo-meta">
+                <span class="todo-author">
+                  <i class="fas fa-user"></i>
+                  ${authorName}
+                </span>
                 <span class="todo-date">
                   <i class="fas fa-clock"></i>
                   ${createdDate} ${createdTime}
@@ -333,15 +365,18 @@ class TodoApp {
 
   initializeAuth() {
     onAuthStateChanged(auth, (user) => {
+      console.log("인증 상태 변경:", user ? user.uid : "로그아웃됨");
       this.currentUser = user;
       this.updateAuthUI();
 
       if (user) {
         // 사용자별 할 일 참조 설정
         this.todosRef = ref(database, `users/${user.uid}/todos`);
+        console.log("Firebase 참조 설정:", this.todosRef.toString());
         this.loadTodosFromFirebase();
       } else {
         // 로그인하지 않은 경우 빈 상태 표시
+        this.todosRef = null;
         this.todos = [];
         this.renderTodos();
       }
