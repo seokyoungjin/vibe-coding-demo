@@ -8,6 +8,11 @@ import {
   remove,
   update,
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -24,21 +29,30 @@ const firebaseConfig = {
 // Initialize Firebase
 const firebaseapp = initializeApp(firebaseConfig);
 const database = getDatabase(firebaseapp);
+const auth = getAuth(firebaseapp);
 class TodoApp {
   constructor() {
     this.todos = [];
     this.todoToDelete = null;
-    this.todosRef = ref(database, "todos");
+    this.currentUser = null;
+    this.todosRef = null;
 
     this.initializeElements();
     this.bindEvents();
-    this.loadTodosFromFirebase();
+    this.addTodoEventListeners(); // 한 번만 연결
+    this.initializeAuth();
   }
 
   initializeElements() {
     // Form elements
     this.todoInput = document.getElementById("todoInput");
     this.addBtn = document.getElementById("addTodo");
+
+    // Header elements
+    this.loginBtn = document.getElementById("loginBtn");
+    this.userInfo = document.getElementById("userInfo");
+    this.userName = document.getElementById("userName");
+    this.logoutBtn = document.getElementById("logoutBtn");
 
     // Display elements
     this.todoList = document.getElementById("todoList");
@@ -57,6 +71,10 @@ class TodoApp {
         this.addTodo();
       }
     });
+
+    // Header events
+    this.loginBtn.addEventListener("click", () => this.goToLogin());
+    this.logoutBtn.addEventListener("click", () => this.logout());
 
     // Modal events
     this.confirmDeleteBtn.addEventListener("click", () => this.confirmDelete());
@@ -80,6 +98,11 @@ class TodoApp {
   }
 
   async addTodo() {
+    if (!this.currentUser) {
+      this.showNotification("로그인이 필요합니다.", "error");
+      return;
+    }
+
     const text = this.todoInput.value.trim();
 
     if (!text) {
@@ -105,14 +128,24 @@ class TodoApp {
   }
 
   async toggleTodo(id) {
+    if (!this.currentUser) {
+      this.showNotification("로그인이 필요합니다.", "error");
+      return;
+    }
+
     try {
-      const todoRef = ref(database, `todos/${id}`);
+      const todoRef = ref(
+        database,
+        `users/${this.currentUser.uid}/todos/${id}`
+      );
       const todo = this.todos.find((t) => t.id === id);
       if (!todo) return;
 
       await update(todoRef, {
         completed: !todo.completed,
       });
+
+      console.log("할 일 상태 변경 완료:", id, !todo.completed);
     } catch (error) {
       console.error("할 일 상태 변경 중 오류:", error);
       this.showNotification("상태 변경에 실패했습니다.", "error");
@@ -125,13 +158,17 @@ class TodoApp {
   }
 
   async confirmDelete() {
-    if (!this.todoToDelete) return;
+    if (!this.todoToDelete || !this.currentUser) return;
 
     try {
-      const todoRef = ref(database, `todos/${this.todoToDelete}`);
+      const todoRef = ref(
+        database,
+        `users/${this.currentUser.uid}/todos/${this.todoToDelete}`
+      );
       await remove(todoRef);
       this.hideDeleteModal();
       this.showNotification("할 일이 삭제되었습니다.", "success");
+      console.log("할 일 삭제 완료:", this.todoToDelete);
       this.todoToDelete = null;
     } catch (error) {
       console.error("할 일 삭제 중 오류:", error);
@@ -140,10 +177,18 @@ class TodoApp {
   }
 
   loadTodosFromFirebase() {
+    if (!this.todosRef) {
+      console.log("todosRef가 없습니다.");
+      return;
+    }
+
+    console.log("Firebase 데이터 로드 시작:", this.todosRef.toString());
+
     // Firebase에서 실시간으로 데이터 로드
     onValue(
       this.todosRef,
       (snapshot) => {
+        console.log("Firebase 데이터 업데이트:", snapshot.val());
         const data = snapshot.val();
         if (data) {
           // Firebase 데이터를 배열로 변환 (key를 id로 사용)
@@ -155,8 +200,10 @@ class TodoApp {
           this.todos.sort(
             (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
           );
+          console.log("정렬된 할일 목록:", this.todos);
         } else {
           this.todos = [];
+          console.log("할일 목록이 비어있습니다.");
         }
         this.renderTodos();
       },
@@ -169,9 +216,17 @@ class TodoApp {
 
   renderTodos() {
     if (this.todos.length === 0) {
+      const emptyMessage = this.currentUser
+        ? "새로운 할 일을 추가해보세요!"
+        : "로그인하여 할 일을 관리하세요!";
+
       this.todoList.innerHTML = `
         <div class="empty-state">
-          <p>할 일을 추가해보세요!</p>
+          <div class="empty-icon">
+            <i class="fas fa-clipboard-list"></i>
+          </div>
+          <h3>할 일이 없습니다</h3>
+          <p>${emptyMessage}</p>
         </div>
       `;
       return;
@@ -201,34 +256,31 @@ class TodoApp {
         `;
       })
       .join("");
-
-    // 이벤트 리스너 추가
-    this.addTodoEventListeners();
   }
 
   addTodoEventListeners() {
-    // 체크박스 이벤트 리스너
-    const checkboxes = this.todoList.querySelectorAll(".todo-checkbox");
-    checkboxes.forEach((checkbox) => {
-      checkbox.addEventListener("change", (e) => {
+    // 이벤트 위임 방식으로 변경하여 더 안정적으로 처리
+    this.todoList.addEventListener("change", (e) => {
+      if (e.target.classList.contains("todo-checkbox")) {
         const todoId = e.target.getAttribute("data-id");
+        console.log("체크박스 클릭:", todoId);
         if (todoId) {
           this.toggleTodo(todoId);
         }
-      });
+      }
     });
 
-    // 삭제 버튼 이벤트 리스너
-    const deleteButtons = this.todoList.querySelectorAll(".delete-btn");
-    deleteButtons.forEach((button) => {
-      button.addEventListener("click", (e) => {
+    this.todoList.addEventListener("click", (e) => {
+      if (e.target.closest(".delete-btn")) {
         e.preventDefault();
         e.stopPropagation();
-        const todoId = e.target.closest(".delete-btn").getAttribute("data-id");
+        const deleteBtn = e.target.closest(".delete-btn");
+        const todoId = deleteBtn.getAttribute("data-id");
+        console.log("삭제 버튼 클릭:", todoId);
         if (todoId) {
           this.deleteTodo(todoId);
         }
-      });
+      }
     });
   }
 
@@ -239,6 +291,51 @@ class TodoApp {
   hideDeleteModal() {
     this.deleteModal.style.display = "none";
     this.todoToDelete = null;
+  }
+
+  initializeAuth() {
+    onAuthStateChanged(auth, (user) => {
+      this.currentUser = user;
+      this.updateAuthUI();
+
+      if (user) {
+        // 사용자별 할 일 참조 설정
+        this.todosRef = ref(database, `users/${user.uid}/todos`);
+        this.loadTodosFromFirebase();
+      } else {
+        // 로그인하지 않은 경우 빈 상태 표시
+        this.todos = [];
+        this.renderTodos();
+      }
+    });
+  }
+
+  updateAuthUI() {
+    if (this.currentUser) {
+      // 로그인된 상태
+      this.loginBtn.style.display = "none";
+      this.userInfo.style.display = "flex";
+      this.userName.textContent =
+        this.currentUser.displayName || this.currentUser.email;
+    } else {
+      // 로그인되지 않은 상태
+      this.loginBtn.style.display = "flex";
+      this.userInfo.style.display = "none";
+    }
+  }
+
+  async logout() {
+    try {
+      await signOut(auth);
+      this.showNotification("로그아웃되었습니다.", "success");
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+      this.showNotification("로그아웃에 실패했습니다.", "error");
+    }
+  }
+
+  goToLogin() {
+    window.location.href = "login.html";
   }
 
   showNotification(message, type = "info") {
