@@ -114,6 +114,12 @@ class TodoApp {
       text: text,
       completed: false,
       createdAt: new Date().toISOString(),
+      author: {
+        uid: this.currentUser.uid,
+        email: this.currentUser.email,
+        displayName: this.currentUser.displayName || this.currentUser.email,
+        photoURL: this.currentUser.photoURL || null,
+      },
     };
 
     try {
@@ -121,6 +127,7 @@ class TodoApp {
       await push(this.todosRef, todo);
       this.todoInput.value = "";
       this.showNotification("할 일이 추가되었습니다.", "success");
+      console.log("할 일 추가 완료:", todo);
     } catch (error) {
       console.error("할 일 추가 중 오류:", error);
       this.showNotification("할 일 추가에 실패했습니다.", "error");
@@ -234,6 +241,17 @@ class TodoApp {
 
     this.todoList.innerHTML = this.todos
       .map((todo) => {
+        const createdDate = new Date(todo.createdAt).toLocaleDateString(
+          "ko-KR"
+        );
+        const createdTime = new Date(todo.createdAt).toLocaleTimeString(
+          "ko-KR",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+          }
+        );
+
         return `
           <div class="todo-item ${
             todo.completed ? "completed" : ""
@@ -244,7 +262,15 @@ class TodoApp {
               ${todo.completed ? "checked" : ""}
               data-id="${todo.id}"
             >
-            <span class="todo-text">${todo.text}</span>
+            <div class="todo-content">
+              <span class="todo-text">${todo.text}</span>
+              <div class="todo-meta">
+                <span class="todo-date">
+                  <i class="fas fa-clock"></i>
+                  ${createdDate} ${createdTime}
+                </span>
+              </div>
+            </div>
             <div class="todo-actions">
               <button class="action-btn delete-btn" data-id="${
                 todo.id
